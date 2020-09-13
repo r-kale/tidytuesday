@@ -12,7 +12,7 @@
 ## Third Example
 ## [Fourth Example](http://www.fourthexample.com)
 
-## Chopped <br />
+## Chopped
 ### Week of 25Aug 2020
 Code is at [here](https://github.com/r-kale/tidytuesday/blob/master/2020_08_25_tidy_tuesday.Rmd) <br/>
 
