@@ -1,0 +1,46 @@
+---
+title: "palmer_penguins"
+author: "rahul"
+date: "30/08/2020"
+output: html_document
+---
+Code along with Julia Silge: https://www.youtube.com/watch?v=z57i2GVcdww
+Objective to get started with tidy models
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(lubridate)
+library(tidymodels) 
+theme_set(theme_minimal())
+```
+
+## Explore data
+```{r}
+library(palmerpenguins)
+
+penguins %>% 
+  filter(!is.na(sex)) %>% 
+  ggplot(aes(flipper_length_mm,bill_length_mm,color = sex,size = body_mass_g ))+
+  geom_point(alpha = 0.7)+
+  facet_wrap(~species)
+```
+
+
+```{r}
+
+penguins_df <- penguins %>% 
+  filter(!is.na(sex)) %>% 
+  select(-year,-island)
+
+```
+
+## Build a model
+
+
+```{r}
+
+
+```
+

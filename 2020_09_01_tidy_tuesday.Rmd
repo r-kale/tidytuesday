@@ -1,0 +1,242 @@
+---
+title: "TidyTemplate"
+date: 2020-09-01
+output: html_output
+---
+
+# TidyTuesday
+This data set is of so exciting !!
+I work with John Deere and tractors and agriculture is what i love.
+
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+theme_set(theme_minimal())
+
+
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2020-09-01")
+tt
+
+tidy_tues_link <- "https://github.com/rfordatascience/tidytuesday/tree/master/data/2020/2020-09-01"
+credit_data <- "https://ourworldindata.org/crop-yields"
+key_crop_yields <- tt$key_crop_yields
+arable_land <- tt$arable_land_pin
+fertilizer <- tt$cereal_crop_yield_vs_fertilizer_application
+land_use<- tt$land_use_vs_yield_change_in_cereal_production
+tractor <- tt$cereal_yields_vs_tractor_inputs_in_agriculture
+
+```
+
+# Extra Data from fso 
+Link "http://www.fao.org/faostat/en/#data/RL"
+Gives details of land use.
+
+```{r land_use_details}
+
+library(gapminder)
+
+# area in data is 1,000 Hectares which is 10 Square Kilometers
+# multilpy by 10 at arrive at 1 sqkm
+
+land_use_details <- read_csv("FAOSTAT_data_9-1-2020.csv",
+                             col_types = cols(.default = col_character())) %>%
+  janitor::clean_names() %>% 
+  transmute(Entity = area,year = as.integer(year),land_category = item,area_sq_km = as.double(value)*10) %>% 
+  mutate(land_category = fct_lump(land_category,7,other_level = "Other")) %>% 
+  group_by(Entity,year,land_category) %>%
+  summarise(area_sq_km = sum(area_sq_km)) %>% 
+  ungroup() %>%
+  arrange(Entity,year,desc(area_sq_km))%>% 
+  pivot_wider(names_from = land_category,values_from = area_sq_km) %>% 
+  janitor::clean_names()
+
+country <- geonames::GNcountryInfo()
+
+country_finance <- gapminder::gapminder %>% 
+                      select(country,year,gdpPercap,pop) %>% 
+                      left_join(gapminder::country_codes %>% select(country,iso_alpha), by=c("country"))
+
+country_finance <- country_finance %>% 
+                      filter(year >=1990 & year <=2000) %>% 
+                      group_by(iso_alpha) %>% 
+                      summarise(gdpPercap_mean = mean(gdpPercap))
+                      
+
+
+country_finance %>% ggplot()+
+                        geom_histogram(aes(log(gdpPercap_mean)),bins = 35)
+```
+
+#ToDos
+1. Custom theme and font - reproduce report as by our world in data
+2. Learn interactive visualization
+
+
+# Questions to ask?
+
+1. Tractors potential for growth in no. of tractors? 
+2. Mechanization potential?
+3. Yield growths ? can they be explained by mechanization and fertilizer use ?
+4. Population growth; does the growth rate match with yield increase ?
+
+
+# Lets start with visualization
+
+```{r explore tractor}
+library(viridis)
+library(RColorBrewer)
+library(lubridate)
+library(scales)
+
+
+trac <- tractor %>%
+  janitor::clean_names() %>% 
+  mutate(year = as.integer(year)) %>% 
+  rename(trac_density = tractors_per_100_sq_km_arable_land) %>% 
+  filter(!is.na(trac_density),!is.na(year)) %>% 
+  left_join((land_use_details %>% select(entity,year,arable_land)), by = c("entity","year")) %>% 
+  left_join(country %>% select(isoAlpha3,continentName),by = c("code" = "isoAlpha3")) %>%
+  mutate(qty = trac_density*arable_land/100) %>% #as density is per 100 sq km
+  filter(!is.na(qty),!is.na(continentName), year <=2000,year >=1990) %>% 
+  arrange(year) %>% 
+  group_by(continentName,year) %>% 
+  summarise(qty = round(sum(qty)/10^6,2)) %>%
+  transmute(continentName,year,qty) %>%
+  mutate(year =  lubridate::ymd(paste(year,"01","01",sep = "-"))) %>% 
+  arrange(desc(year),continentName) %>% 
+  ungroup()
+
+trac %>%
+  mutate(year_number = year(year)) %>% 
+  group_by(year) %>% 
+  mutate(prop_percent = qty / sum(qty)) %>%
+  filter(prop_percent >=0.01) %>% 
+  ggplot(aes(year,prop_percent,fill = fct_reorder(continentName,prop_percent)))+
+  geom_area(alpha = 0.7,
+            color = "grey")+
+  geom_text(aes(label = percent(prop_percent,accuracy = 1)),
+            position = position_fill((vjust = 0.5)),
+            size=3.5,
+            color = "black",
+            alpha = 0.8)+
+  theme_minimal()+
+  theme(legend.title = element_blank()) +
+  theme(axis.text.x = element_text( size = 10))+
+  labs(title = "Tractor population share among continents",
+       subtitle = "Years: 1990 - 2000",
+       caption = paste0("Source: ",credit_data,"\nVisual: @rahulvilaskale"))+
+  scale_x_date(date_breaks = "1 years",name = NULL, date_labels = "%Y")+
+  scale_y_continuous(name = NULL,labels = NULL)+
+  scale_fill_brewer(palette = "Set3")
+
+
+```
+
+```{r model}
+
+```
+
+
+```{r explore potential}
+
+library(ggrepel)
+
+tractor %>%
+  janitor::clean_names() %>% 
+  mutate(year = as.integer(year)) %>% 
+  rename(trac_density = tractors_per_100_sq_km_arable_land,
+         cereal_density = cereal_yield_kilograms_per_hectare_kg_per_hectare) %>% 
+  filter(!is.na(trac_density),!is.na(year)) %>% 
+  left_join((land_use_details %>% select(entity,year,arable_land)), by = c("entity","year")) %>% 
+  left_join(country %>% select(isoAlpha3,continentName),by = c("code" = "isoAlpha3")) %>%
+  mutate(qty = trac_density*arable_land/100) %>% 
+  filter(!is.na(qty),!is.na(continentName), year <=2000,year >=1990) %>% 
+  mutate(year =  lubridate::ymd(paste(year,"01","01",sep = "-"))) %>% 
+  mutate(selected_countries = if_else(
+                                  ( log(cereal_density) < 8 &
+                                    log(trac_density) <= 4 &
+                                    log(arable_land) > 10),
+                                  entity,
+                                  NA_character_))%>%
+  group_by(code,selected_countries,continentName) %>% 
+  summarise(cereal_density = mean(cereal_density),
+            trac_density = mean(trac_density),
+            total_population_gapminder = mean(total_population_gapminder),
+            arable_land = mean(arable_land)) %>% 
+  left_join(country_finance, by = c("code" = "iso_alpha")) %>% 
+  ggplot(aes(log(cereal_density),log(trac_density)))+
+    geom_smooth(method = "lm",se = FALSE,color = "grey",alpha = 0.9)+
+    geom_point(aes(color = fct_reorder(continentName,-trac_density),size = arable_land))+
+    geom_text_repel(aes(label = selected_countries))+
+    theme_minimal()+
+    theme(legend.title = element_blank())+
+    guides(size=FALSE)+
+    labs(title = "Mechanization Improves Yield",
+         subtitle = "Average cereal yeilds vs. Average tractor density. Larger dots - higher arable land.\nCountries with high mechanization potential are highlighted, (higher arable area but lower tractor desnsity and lower cereal yield.)",
+         caption = paste0("Source: ",credit_data,"\nVisual: @rahulvilaskale"))+
+  scale_color_brewer(palette = "Dark2")+
+  scale_x_continuous(name = "Cereal Yield - log scale")+
+  scale_y_continuous(name = "Tractor Density - log scale")
+
+
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "My TidyTuesday Plot.png",
+  device = "png")
+
+```

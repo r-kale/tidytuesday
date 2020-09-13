@@ -1,0 +1,97 @@
+---
+title: "TidyTemplate"
+date: 2020-08-29
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(RColorBrewer)
+library(viridis)
+theme_set(theme_light())
+
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2020-08-25")
+tt
+
+chopped <-tt$chopped
+
+```
+
+```{r}
+library(glue)
+chopped %>% 
+  ggplot(aes(episode_rating)) +
+  geom_histogram(bin =16)
+
+ chopped_series <- chopped %>% 
+  filter(!is.na(episode_rating)) %>% 
+  group_by(season) %>% 
+  mutate(season_avg = mean(episode_rating)) %>% 
+  ungroup() %>% 
+  mutate(select_episode_name = 
+           case_when(
+              episode_rating > 9 | episode_rating < 7 ~ glue("{season}.{season_episode}.{episode_name}"),
+              TRUE ~ "")) %>%
+  ggplot(aes(series_episode,episode_rating)) +
+    geom_line(aes(color = factor(season)),alpha = 0.5) +
+    geom_point(aes(color = factor(season))) +
+    geom_line(aes(series_episode,season_avg),color = "black",alpha = 0.8) +
+    ggrepel::geom_text_repel(aes(label = select_episode_name), 
+              vjust="inward",hjust="inward", 
+              force = 2,size = 3, alpha = 0.5) +
+    theme(legend.position = "None")+
+    labs(title = "Chopped episode ratings",
+         subtitle = "Colors indicate different seasons. Black line is average rating / season",
+         caption = "#TidyTuesday 2020 Week 35 dataset \nanalysis by @rahulvilaskale",
+         x = "Series Episode", y = "Episode Rating")
+
+chopped_series
+```
+
+# Play with ingredients
+```{r}
+ingredients <- chopped %>% 
+  select(season:episode_rating,appetizer:dessert) %>% 
+  pivot_longer(appetizer:dessert, names_to = "course", values_to = "ingredients") %>% 
+  separate_rows(ingredients, sep = ",") %>% 
+  mutate(ingredients = str_trim(ingredients))
+
+ingredients %>% 
+  mutate(ingredients = str_to_title(ingredients)) %>% 
+  add_count(ingredients,sort = TRUE) %>% 
+  filter(n>=10) %>% 
+  mutate(ingredients = fct_reorder(ingredients,season)) %>% 
+  ggplot(aes(season,ingredients, fill = n))+
+  geom_boxplot()+
+  theme(legend.title = element_blank(),
+        legend.position = "right")+
+  labs(title = "Popular Ingredients in Chopped",
+       subtitle = "Atleast appeared 10 times in show, colors gives frequency",
+       caption = "#TidyTuesday 2020 Week 35 dataset \nanalysis by @rahulvilaskale",
+       x = "Seasons",
+       y= "")+
+  scale_fill_viridis(option = "D",alpha = 0.7,direction = -1)
+
+```
+
