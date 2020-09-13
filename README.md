@@ -2,7 +2,7 @@
 ## My TidyTuesday submissions
 # Table of Contents
 1. [Chopped](#Chopped)
-2. [lobal Crop Yields](#lobal Crop Yields)
+2. [Global Crop Yields](#Global Crop Yields)
 
 
 
