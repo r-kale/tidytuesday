@@ -1,4 +1,6 @@
-# Tidytuesday
+# TidyTuesday
+Here is the [link](https://github.com/rfordatascience/tidytuesday/blob/master/README.md) to the Tidy Tuesday initiative.
+
 ## My TidyTuesday submissions
 # Contents
 1. [Chopped](#Chopped)
