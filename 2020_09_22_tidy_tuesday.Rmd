@@ -1,0 +1,94 @@
+---
+title: "TidyTemplate"
+date: 2020-09-26
+output: html_output
+---
+
+# TidyTuesday
+
+
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(stringr)
+library(ggforce)
+library(ggridges)
+
+```
+
+# Load the weekly Data
+
+
+```{r Load, include=FALSE,echo=FALSE,message=FALSE}
+
+# read in the data manually
+
+members <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-22/members.csv')
+expeditions <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-22/expeditions.csv')
+peaks <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-22/peaks.csv')
+
+```
+
+```{r exlplore,include=FALSE,echo=FALSE,message=FALSE}
+
+
+members %>% 
+  left_join(peaks,by=c("peak_id")) %>% 
+  mutate(year = as.factor((year-1900)%/%10*10+1900)) %>%
+  count(year,age,sex) %>% 
+  ggplot(aes(age,year,fill = "D55E0050"))+
+   geom_density_ridges(
+    jittered_points = FALSE, scale = .95, rel_min_height = .01,
+    point_shape = "|", point_size = 3, size = 0.25,
+    position = position_points_jitter(width = 2,height = 0)
+  ) +
+  scale_y_discrete(expand = c(0, 0),name = "Decade") +
+  scale_x_continuous(expand = c(0, 0), name = "Age") +
+  scale_fill_manual(values = c("#D55E0050")) +
+  scale_color_manual(values = c("#D55E00"), guide = "none") +
+  scale_discrete_manual("point_color", values = c("#D55E00"), guide = "none") +
+  coord_cartesian(clip = "off") +
+  guides(fill = "none") +
+  labs(title = "Age of climbers over years",
+       subtitle = "With time, young have got younger and old one are older ") +
+  theme_minimal()
+ 
+members %>% 
+  left_join(peaks,by=c("peak_id")) %>% 
+  filter(!is.na(sex),!is.na(age)) %>% 
+  mutate(year = as.factor((year-1900)%/%10*10+1900)) %>%
+  count(year,age,sex) %>% 
+  group_by(year,sex) %>% 
+  summarise(age = mean(age,na.rm = TRUE),
+            n = sum(n)) %>% 
+  group_by(year) %>% 
+  mutate(n= round(n/sum(n)*100,1)) %>% 
+  ggplot(aes(n,year,fill = sex))+
+  geom_col(width = 1)+
+  geom_text(aes(label = paste(n,"%")),position = position_stack(vjust = 0.95),size = 2.5)+
+  scale_y_discrete(expand = c(0, 0),name = "Decade") +
+  scale_x_continuous(expand = c(0, 0), name = "Proportion of Sex") +
+  scale_fill_manual(values = c("#D55E0050", "#0072B250"), labels = c("female", "male")) +
+  coord_cartesian(clip = "off") +
+  guides(fill = guide_legend(
+    title = element_blank(),
+    override.aes = list(
+      fill = c("#D55E0050", "#0072B250"),
+      color = NA, point_color = NA)
+    )
+  )+
+  theme_minimal()
+# citizenship,age,sex,died,year,oxygen_used,season
+# height_metres,peak_id,climbing_status,first_ascent_year,first_ascent_country
+members %>% 
+  left_join(peaks,by=c("peak_id")) %>% 
+  select(peak_name.x,height)
+  View()
+
+  
+```
+

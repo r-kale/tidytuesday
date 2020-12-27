@@ -1,0 +1,138 @@
+---
+title: "TidyTemplate"
+date: 2020-12-22
+output: html_output
+---
+
+# TidyTuesday
+
+
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(countrycode)
+library(patchwork)
+library(ggtext)
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+Its Big Mac
+
+```{r Load}
+
+tt <- tt_load("2020-12-22")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+bm <- tt$`big-mac`
+
+bm$region <- countrycode::countrycode(bm$iso_a3,"iso3c","region")
+
+bm[is.na(bm$region),]$region <- "Europe-EU"
+
+bm %>% 
+    filter(str_detect(str_to_lower(name),"united states")) %>% 
+    View()
+
+bm %>% select(name) %>% unique
+
+bm %>% 
+  filter(str_detect(str_to_lower(name),"states|india|thailand|euro")) %>%
+  ggplot()+
+  geom_point(aes(date,local_price))+
+  geom_smooth(aes(date,local_price),se=FALSE,method = "lm",colour = "red")+
+  facet_grid(rows = vars(region),scales = "free")
+
+bm %>% 
+  group_by(region,date) %>% 
+  summarise(usd_raw = mean(usd_raw)) %>% 
+  View()
+  
+bm_r <- bm %>% 
+  filter(!str_detect(iso_a3,"USA|CAN")) %>% 
+  group_by(region,date) %>% 
+  summarise(usd_raw = mean(usd_raw))
+
+mac_conch <- bm_r %>% 
+  ggplot()+
+  geom_line(data = bm %>% filter(!str_detect(iso_a3,"USA|CAN")),
+             aes(date,usd_raw,group = iso_a3,color = region),alpha = 0.1,size = 1)+
+    geom_point(data = bm %>% filter(!str_detect(iso_a3,"USA|CAN")),
+             aes(date,usd_raw,group = iso_a3,color = region),alpha = 0.1,size = 1)+
+  geom_smooth(aes(date,usd_raw,color = region),se=FALSE,method = "lm",size = 1.1)+
+  scale_y_continuous()+
+  scale_color_brewer(palette = "Dark2")+
+  coord_polar()+
+  xlab("")+ylab("")+
+  labs(title = "**The Undervaluation Spiral**",
+       subtitle = "All the regions of the world have a consistent trend of currency undervaluation <br> **The Mac Conch**",
+       caption = "https://www.economist.com/bigmac
+       visulaization by @rahulvilaskale")+
+  theme_minimal()+
+  theme(plot.title = element_markdown(hjust = 0.5),
+        plot.subtitle = element_markdown(hjust = 0.5))+
+  theme(legend.position = "left",legend.title = element_blank(),axis.line = element_blank())
+
+
+  
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(plot = mac_conch,
+  filename = "mac_conch.png",
+  device = "png")
+
+```
