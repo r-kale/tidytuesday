@@ -1,0 +1,205 @@
+---
+title: "TidyTemplate"
+date: 2021-01-10
+output: html_output
+---
+
+#
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(ggbump)
+library(scico)
+library(viridis)
+library(RColorBrewer)
+
+
+```
+
+
+
+```{r Load}
+
+tt <- tt_load("2021-01-05")
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+
+```
+
+# Wrangle
+
+```{r Wrangle}
+
+
+transit_df <- tt$transit_cost %>% 
+  mutate(start_year = as.numeric(start_year),
+         end_year = as.numeric(end_year),
+         duration = end_year - start_year,
+         duration_month_km = duration*12/length,
+         country_en_name = countrycode::countrycode(tt$transit_cost$country,"iso2c","country.name")) %>% 
+  filter(!is.na(e),!is.na(duration),!is.na(country_en_name),!is.na(cost_km_millions)) %>% 
+  group_by(country) %>% 
+  mutate(total_length_km = sum(length)) %>% filter(total_length_km >= 50) %>% ungroup()
+
+
+glimpse(transit_df)
+
+# Ranks
+#Speed of construction
+
+transit_df %>% 
+  group_by(country_en_name) %>% 
+  summarise(duration_month_km = median(duration_month_km),
+            group = "group") %>% 
+  mutate(country_en_name = fct_reorder(country_en_name,-duration_month_km)) %>% 
+  ggplot(aes(duration_month_km,country_en_name))+
+  geom_point()+
+  geom_line(aes(group = group))+
+  theme_minimal()+
+  theme(axis.text = element_text(angle = 0))
+
+
+#Length of construction
+
+transit_df %>% 
+  group_by(country_en_name) %>% 
+  summarise(length = sum(length),
+            group = "group") %>% 
+  mutate(country_en_name = fct_reorder(country_en_name,length)) %>% 
+  ggplot(aes(length,country_en_name))+
+  geom_point()+
+  geom_line(aes(group = group))+
+  theme_minimal()+
+  theme(axis.text = element_text(angle = 0))
+
+#Mean Construction Cost per km
+
+transit_df %>% 
+  group_by(country_en_name) %>% 
+  summarise(mean_cost_km_millions = mean(cost_km_millions),
+            group = "group") %>% 
+  mutate(country_en_name = fct_reorder(country_en_name,-mean_cost_km_millions)) %>% 
+  ggplot(aes(mean_cost_km_millions,country_en_name))+
+  geom_point()+
+  geom_line(aes(group = group))+
+  theme_minimal()+
+  theme(axis.text = element_text(angle = 0))
+
+
+mean_cost_km_millions <- transit_df %>% 
+  group_by(country_en_name) %>% 
+  summarise(mean_cost_km_millions = mean(cost_km_millions))
+
+mean_cost_km_millions <- mean_cost_km_millions %>% 
+  summarise(mean_cost_km_millions = mean(mean_cost_km_millions)) %>% 
+  transmute(country_en_name = "World",
+            mean_cost_km_millions) %>% 
+  bind_rows(mean_cost_km_millions) %>% 
+  transmute(country_en_name,
+            category = "mean_cost_km_millions",
+            rank = rank(mean_cost_km_millions,ties.method = "random" )) 
+
+
+length_total <- transit_df %>% 
+  group_by(country_en_name) %>% 
+  summarise(length_total = sum(length)) %>% 
+  transmute(country_en_name,
+            length_total)
+
+length_total <- length_total %>% 
+  summarise(length_total = mean(length_total)) %>% 
+    transmute(country_en_name = "World",
+            length_total) %>% 
+  bind_rows(length_total) %>% 
+  transmute(country_en_name,
+            category = "length_total",
+            rank = rank(-length_total,ties.method = "random" )) 
+
+duration_month_km <- transit_df %>% 
+  group_by(country_en_name) %>% 
+  summarise(duration_month_km = median(duration_month_km))
+
+duration_month_km <- duration_month_km %>% 
+    summarise(duration_month_km = median(duration_month_km)) %>% 
+    transmute(country_en_name = "World",
+              duration_month_km) %>% 
+  bind_rows(duration_month_km) %>% 
+  transmute(country_en_name,
+            category = "duration_month_km",
+            rank = rank(duration_month_km,ties.method = "random" )) 
+
+df <- bind_rows(mean_cost_km_millions,length_total,duration_month_km) %>% 
+  mutate(category_numeric = factor(category, 
+                                   levels = c("length_total","mean_cost_km_millions","duration_month_km")),
+         category_numeric = as.numeric(category_numeric)) %>% 
+    mutate(country_name_length = if_else(str_detect(category,"length"),country_en_name,""),
+         country_name_rate = if_else(str_detect(category,"month"),country_en_name,""),
+         country_name_cost = if_else(str_detect(category,"cost"),country_en_name,""))
+
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+plot <- df  %>% 
+  ggplot(aes(category_numeric,rank,color = country_en_name))+
+  geom_text(aes(category_numeric-0.05,rank,label = country_name_length),hjust = 1,size = 2.9)+
+  geom_text(aes(category_numeric+0.05,rank,label = country_name_rate),hjust = 0,size = 2.9)+
+  # geom_text(aes(category_numeric,rank-0.1,label = country_name_cost),vjust = 0,size = 2.5)+
+  geom_point(size = 3)+
+  geom_bump(size = 2, smooth = 8)+
+  xlab("")+ylab("")+
+  labs(title = "Transit Cost Project: How do countries compare?",
+       subtitle = "Ranking Countries with total length of network > 50 km. Includes the World mean",
+       caption = "#TidyTuesday\nVisualization by @rahulvilaskale\nReference: https://transitcosts.com")+
+  scale_x_continuous(breaks = c(1,2,3),
+                     labels = c("Total length of all projects\nHighest 1st",
+                                "Mean cost/km $M\nLowest 1st",
+                                "Median Rate of km completion\nHighest km/year 1st"),
+                     expand = expansion(mult = c(0.1,0.1)))+
+  scale_y_reverse(breaks = c(1:29),sec.axis = sec_axis(~.,breaks = c(1:29)))+
+  theme_minimal()+
+  theme(panel.grid = element_blank(),
+        axis.text.y = element_text(face = "bold"),
+        axis.text.x = element_text(face = "bold"))+
+  scale_colour_scico_d(palette = "berlin")+
+  guides(color=FALSE)
+
+plot
+
+```
+
+# Save Image
+
+
+
+```{r}
+
+file_name <- paste(format(lubridate::today(),"%Y"),format(lubridate::today(),"%b"),"wk",
+                   format(lubridate::today(),"%w"),sep = "_")
+# This will save your most recent plot
+ggsave(plot = plot,
+  filename = paste0(file_name,".png"),
+  device = "png",width = 14,height = 6,dpi = 300,units = "in")
+
+```
