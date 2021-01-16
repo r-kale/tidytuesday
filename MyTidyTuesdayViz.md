@@ -3,18 +3,22 @@ Here is the [link](https://github.com/rfordatascience/tidytuesday/blob/master/RE
 
 ## My TidyTuesday submissions
 # Contents 2021
-1. [Transit_Costs_Project](#Transit)
 2. [Tate_Art_Museum](#Tate)
+1. [Transit_Costs_Project](#Transit)
+
+
+
+## Tate_Art_Museum
+### Week of 12th Jan
+Code is at [here](https://github.com/r-kale/tidytuesday/blob/master/2021_01_12_tidy_tuesday.Rmd) <br/>
+![plot1](https://github.com/r-kale/tidytuesday/blob/master/tate_plot.png) <br/>
+
 
 ## Transit_Costs_Project
 ### Week of 5th Jan
 Code is at [here](https://github.com/r-kale/tidytuesday/blob/master/2021_01_05_tidy_tuesday.Rmd) <br/>
 ![plot1](https://github.com/r-kale/tidytuesday/blob/master/2021_Jan_wk_2.png) <br/>
 
-## Tate_Art_Museum
-### Week of 12th Jan
-Code is at [here](https://github.com/r-kale/tidytuesday/blob/master/2021_01_12_tidy_tuesday.Rmd) <br/>
-![plot1](https://github.com/r-kale/tidytuesday/blob/master/tate_plot.png) <br/>
 
 # Contents 2020
 1. [Chopped](#Chopped)
