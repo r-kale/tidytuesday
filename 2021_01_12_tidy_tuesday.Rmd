@@ -1,0 +1,132 @@
+---
+title: "Rahul Kale"
+date: 2021-01-13
+output: html_output
+---
+
+# TidyTuesday
+
+
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scico)
+
+
+
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2021-01-12")
+
+```
+
+
+# Readme
+
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+artists <- tt$artists
+glimpse(artists)
+
+artwork <- tt$artwork 
+glimpse(artwork)
+
+
+```
+
+# Wrangle
+
+
+```{r Wrangle}
+
+  
+mean <- artwork %>% 
+  filter(is.na(depth)) %>% 
+  filter(!is.na(width),!is.na(height)) %>% 
+  filter(width < 3000,height < 3000 ) %>% 
+  mutate(acquisitionYear = as.character(acquisitionYear)) %>% 
+  group_by(acquisitionYear) %>% 
+  summarise(width = mean(width),height = mean(height)) 
+ 
+mean_all <- artwork %>% 
+  filter(is.na(depth)) %>% 
+  filter(!is.na(width),!is.na(height)) %>% 
+  filter(width < 3000,height < 3000 ) %>% 
+  mutate(acquisitionYear = as.character(acquisitionYear)) %>% 
+  group_by() %>% 
+  summarise(width = mean(width),height = mean(height)) 
+
+mean_all
+
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+tate_plot <- artwork %>% 
+  filter(is.na(depth)) %>% 
+  filter(!is.na(width),!is.na(height)) %>% 
+  filter(width < 3000,height < 3000 )%>%
+  ggplot()+
+  geom_tile(aes(x=0,y=0,width = width,height = height),fill = "transparent", color = "grey30")+
+  geom_tile(aes(x=0,y=0,width = 3001,height = 3001),fill = "transparent", color = "red",size = 0.8)+
+  geom_tile(data = mean,
+             aes(x=0,y=0,width = width,height = height,color = acquisitionYear),
+             fill = "transparent")+
+  geom_tile(data = mean_all,
+            aes(x=0,y=0,width = width,height = height),fill = "transparent", color = "red",size = 0.5)+
+  theme_void()+
+  labs(title = "The Tate Art Dimensions: Window of Art",
+       subtitle = "Colors are the means of the acquisition years. \nBig red box is 3000 x 3000 mm the largest size considered. \nThe inner red box is 287mm by 301mm, the mean of all the artworks",
+       caption = "#TidyTuesday\n
+       inspired from: https://ifweassume.blogspot.com/2013/11/the-dimensions-of-art.html\n
+       visualization by @rahulvilaskale")+
+  guides(color = FALSE)+
+  scale_color_scico_d(palette = "lajolla")+
+  theme(plot.title = element_text(size = 14),
+        plot.subtitle = element_text(size = 10))
+  
+
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(plot = tate_plot,
+  filename = "tate_plot.png",width = 8,height = 8,units = "in",dpi = 300,
+  device = "png")
+
+```
